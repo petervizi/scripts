@@ -1,0 +1,19 @@
+#!/bin/sh
+
+DEST_PATH="/home/WSN/oktatas/Neural_Networks_Course"
+
+cd ~/book
+svn up
+R=`svn info | grep "Last Changed Rev" | awk '{print $4}'`
+if [ -e $DEST_PATH/book_r$R.pdf ]
+    then
+    echo "mar van"
+    else
+    latex book.tex
+    makeindex book.idx
+    latex book.tex
+    latex book.tex
+    latex book.tex
+    dvipdf book.dvi
+    cp book.pdf $DEST_PATH/book_r$R.pdf
+fi
