@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# No trailing slash
+PODCAST=~/Podcast
+MUSIC=~/Music
+PATH=$PATH:~/bin
+# Get the podcasts
+/usr/bin/podget -s
+
+mkdir -p $MUSIC/Podcast
+cd $PODCAST
+
+case "$1" in
+    -c)
+	name=$(basename "$2" .m4a)
+	source="$PODCAST/$2"
+	product="$MUSIC/Podcast/$name.ogg"
+	tmp="/tmp/$name.wav"
+	if [ ! -f $product ]
+	then
+	    # echo "already exists $product"
+#	else
+	    echo "new download $source"
+	    nice mplayer -really-quiet -ao pcm "$source" -ao pcm:file="$tmp" && nice oggenc -Q -q5 "$tmp"  -o "$product" ; rm "$tmp" &
+	fi
+	;;
+    *)
+	find . -name "*.m4a" -type f -exec mypodget -c '{}' \& \;
+	;;
+esac
