@@ -4,6 +4,7 @@
 PODCAST=~/Podcast
 MUSIC=~/Music
 PATH=$PATH:~/bin
+CODING=mp3 # or ogg
 # Get the podcasts
 /usr/bin/podget -s
 
@@ -14,14 +15,19 @@ case "$1" in
     -c)
 	name=$(basename "$2" .m4a)
 	source="$PODCAST/$2"
-	product="$MUSIC/Podcast/$name.ogg"
+	product="$MUSIC/Podcast/$name.$CODING"
 	tmp="/tmp/$name.wav"
 	if [ ! -f $product ]
 	then
-	    # echo "already exists $product"
-#	else
-	    echo "new download $source"
-	    nice mplayer -really-quiet -ao pcm "$source" -ao pcm:file="$tmp" && nice oggenc -Q -q5 "$tmp"  -o "$product" ; rm "$tmp" &
+	    echo "new download $product"
+	    case "$CODING" in
+		mp3)
+		    nice mplayer -really-quiet "$source" -ao pcm:file="$tmp" && lame -Srh "$tmp" "$product" ; rm "$tmp" &
+		    ;;
+		ogg)
+		    nice mplayer -really-quiet "$source" -ao pcm:file="$tmp" && nice oggenc -Q -q5 "$tmp"  -o "$product" ; rm "$tmp" &
+		    ;;
+	    esac
 	fi
 	;;
     *)
