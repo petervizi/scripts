@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+
+import mpd
+import Skype4Py
+from daemon import Daemon
+from optparse import OptionParser
+import time
+
+class Moc2Skype(Daemon):
+    def __init__(self, pidfile):
+        Daemon.__init__(self, pidfile, stdout='/tmp/moc2skype.out', stderr='/tmp/moc2skype.out')
+
+    def stop(self):
+        Daemon.stop(self)
+        skype = Skype4Py.Skype()
+        skype.Attach()
+        skype.CurrentUserProfile.MoodText = ''
+
+    def run(self):
+        skype = Skype4Py.Skype()
+        skype.Attach()
+        mpdc = mpd.MPDClient()
+        mpdc.connect('localhost', 6600)
+        text = ''
+        while True:
+            status = mpdc.status()
+            if status['state'] == 'play':
+                song = mpdc.currentsong()
+                tmp = ''
+                try:
+                    tmp += song['title']
+                except KeyError:
+                    pass
+                try:
+                    tmp  += ' by ' + song['artist']
+                except KeyError:
+                    pass
+                try:
+                    tmp += " on " + song['album']
+                except KeyError:
+                    pass
+                try:
+                    tmp += " on " + song['name']
+                except KeyError:
+                    pass
+                if text != tmp:
+                    text = tmp
+                    skype.CurrentUserProfile.MoodText = tmp
+                    print tmp
+            else:
+                text = ''
+                skype.CurrentUserProfile.MoodText = text
+            time.sleep(5)
+
+if __name__ == "__main__":
+    parser = OptionParser()
+    (options, args) = parser.parse_args()
+    if len(args) < 1:
+        parser.error("Argument required!")
+
+    daemon = Moc2Skype('/tmp/moc2skype.pid')
+    if args[0] == 'start':
+        print 'start'
+        daemon.start()
+    elif args[0] == 'stop':
+        print 'stop'
+        daemon.stop()
+    else:
+        parser.error("Invalid argument!")
+    parser.destroy()        
+
