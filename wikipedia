@@ -17,6 +17,11 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 question = sys.argv[1]
-answer = dns.resolver.query(question + '.wp.dg.cx', 'TXT')
+try:
+    answer = dns.resolver.query(question + '.wp.dg.cx', 'TXT')
+except Exception:
+    print 'no entry found'
+    sys.exit(1)
+
 for a in answer.response.answer:
     print a[0]
