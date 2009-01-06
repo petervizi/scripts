@@ -1,0 +1,22 @@
+#!/usr/bin/env python
+
+##
+# @file wikipedia
+#
+# Get Wikipedia entries using DNS records.
+# See https://dgl.cx/wikipedia-dns
+#
+# @param a string to look up in wikipedia
+# @return the summarized entry
+#
+
+import dns.resolver
+import sys
+
+if len(sys.argv) != 2:
+    sys.exit(1)
+
+question = sys.argv[1]
+answer = dns.resolver.query(question + '.wp.dg.cx', 'TXT')
+for a in answer.response.answer:
+    print a[0]
