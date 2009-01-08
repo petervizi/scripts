@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 
+##
+# @file mpd2skype
+#
+# Print information about currently playing file into Skype's
+# MoodText.
+#
+
 import mpd
 import Skype4Py
 from daemon import Daemon
@@ -20,10 +27,23 @@ class Moc2Skype(Daemon):
         skype = Skype4Py.Skype()
         skype.Attach()
         mpdc = mpd.MPDClient()
-        mpdc.connect('localhost', 6600)
+        try:
+            mpdc.connect('localhost', 6600)
+        except Exception:
+            print 'no server running now'
         text = ''
+        status = {}
         while True:
-            status = mpdc.status()
+            try:
+                status = mpdc.status()
+            except mpd.ConnectionError:
+                try:
+                    mpdc.connect('localhost', 6600)
+                    status = mpdc.status()
+                except Exception:
+                    print 'no server running now'
+                    time.sleep(5)
+                    continue
             if status['state'] == 'play':
                 song = mpdc.currentsong()
                 tmp = ''
@@ -45,11 +65,11 @@ class Moc2Skype(Daemon):
                     pass
                 if text != tmp:
                     text = tmp
-                    skype.CurrentUserProfile.MoodText = tmp
+                    skype.CurrentUserProfile.RichMoodText = tmp
                     print tmp
             else:
                 text = ''
-                skype.CurrentUserProfile.MoodText = text
+                skype.CurrentUserProfile.RichMoodText = text
             time.sleep(5)
 
 if __name__ == "__main__":
