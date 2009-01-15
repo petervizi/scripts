@@ -13,9 +13,9 @@ from daemon import Daemon
 from optparse import OptionParser
 import time
 
-class Moc2Skype(Daemon):
+class Mpd2Skype(Daemon):
     def __init__(self, pidfile):
-        Daemon.__init__(self, pidfile, stdout='/tmp/moc2skype.out', stderr='/tmp/moc2skype.out')
+        Daemon.__init__(self, pidfile, stdout='/tmp/mpd2skype.out', stderr='/tmp/mpd2skype.out')
 
     def stop(self):
         Daemon.stop(self)
@@ -65,7 +65,10 @@ class Moc2Skype(Daemon):
                     pass
                 if text != tmp:
                     text = tmp
-                    skype.CurrentUserProfile.RichMoodText = tmp
+                    try:
+                        skype.CurrentUserProfile.RichMoodText = tmp
+                    except Exception, e:
+                        print e
                     print tmp
             else:
                 text = ''
@@ -78,7 +81,7 @@ if __name__ == "__main__":
     if len(args) < 1:
         parser.error("Argument required!")
 
-    daemon = Moc2Skype('/tmp/moc2skype.pid')
+    daemon = Mpd2Skype('/tmp/mpd2skype.pid')
     if args[0] == 'start':
         print 'start'
         daemon.start()
