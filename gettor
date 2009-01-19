@@ -11,9 +11,12 @@ if __name__ == '__main__':
 
 	arg = sys.argv[1]
 	numexp = re.compile('http://www.mininova.org/tor/(\d*)')
-	num = numexp.match(arg).group(1)
+	num = numexp.match(arg).group(1)	
 	url = 'http://www.mininova.org/get/' + num
 	(filename, headers) = urllib.urlretrieve(url)
+	if headers.dict['content-type'] != 'application/x-bittorrent':
+		print 'no bittorrent file received'
+		sys.exit(1)
 	nameexp = re.compile('inline; filename="(.*)"')
 	name = nameexp.match(headers.dict['content-disposition']).group(1)
 	os.rename(filename, name)
