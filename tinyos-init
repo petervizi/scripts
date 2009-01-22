@@ -238,7 +238,7 @@ $lic
 #ifndef _${NAME}_H_
 #define _${NAME}_H_
 $lic$aut
-#endif
+#endif /* _${NAME}_H_ */
 EOF
 }
 
@@ -286,7 +286,7 @@ enum {
     AM_${UNAME}_MSG_T = 0x$HEX, // $2
 };
 
-#endif
+#endif /* _${UNAME}_H_ */
 EOF
 }
 
