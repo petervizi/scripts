@@ -1,0 +1,216 @@
+#!/bin/bash
+
+## function definition ##
+
+##
+# Convert an integer into hexadecimal form
+#
+# @param $1 an integer
+# @return $1 in hexadecimal
+#
+inttohex() {
+		echo $(echo "obase=16; $1" | bc)
+}
+
+##
+# Return the Makefile for the application
+#
+# @param $1 the name of the application
+# @return the content of the Makefile
+#
+makefile() {
+		echo -e "COMPONENT = $1AppC\n\ninclude \$(MAKERULES)"
+}
+
+##
+# Return the applications configuration file.
+#
+# @param $1 the name of the application
+# @param $2 the used message AM id
+# @return the content of the configuration file
+#
+appfile() {
+		echo -e "#include \"${1}.h\""
+		if [ $2 -gt 0 ]
+		then
+				echo -e "#include \"${1}Msg.h\"\n"
+		else
+				echo
+		fi
+		cat <<EOF
+/**
+ *
+ */
+configuration $1AppC {
+} implementation {
+    components MainC;
+    components $1C as App;
+
+    App.Boot -> MainC;
+}
+EOF
+}
+
+##
+# Create the content of the module file
+#
+# @param $1 the name of the application
+# @return the content of the module
+#
+modulefile() {
+		cat <<EOF
+/**
+ *
+ */
+module $1C {
+    uses interface Boot;
+} implementation {
+
+    /* variables */
+
+    /* end variables */
+
+    /* functions */
+
+    /* end functions */
+
+    /* tasks */
+
+    /* end tasks */
+
+    /* events */
+
+    event void
+    Boot.booted() {
+    }
+
+    /* end events */ 
+}
+EOF
+}
+
+##
+# Create the README.rst content.
+#
+# @param $1 the name of the application
+# @return the content of the README
+#
+readmefile() {
+		for (( i = 0 ; i < ${#1}; i++ ))
+		do
+				echo -n "="
+		done
+		echo -e "\n$1"
+		for (( i = 0 ; i < ${#1}; i++ ))
+		do
+				echo -n "="
+		done
+		echo
+}
+
+##
+# Create a header file for the application.
+#
+# @param $1 the name of the application
+# @return the content of the header file
+#
+headerfile() {
+		NAME=`echo $1 | tr '[:lower:]' '[:upper:]'`
+		echo -e "#ifndef _${NAME}_H_\n#define _${NAME}_H_\n\n#endif"
+}
+
+##
+# Create a header file with a message.
+#
+# @param $1 the AM id of the message
+# @return the content of the header file
+#
+messagefile() {
+		UNAME=`echo $1 | tr '[:lower:]' '[:upper:]'`
+		LNAME=`echo $1 | tr '[:upper:]' '[:lower:]'`
+		HEX=`inttohex $2`
+		cat <<EOF
+#ifndef _${UNAME}_MSG_H_
+#define _${UNAME}_MSG_H_
+
+typedef nx_struct ${LNAME}_msg_t {
+} ${LNAME}_msg_t;
+
+enum {
+    AM_${UNAME}_MSG_T = 0x$HEX, // $2
+};
+
+#endif
+EOF
+}
+
+## end of function definition ##
+
+message=0
+while getopts m: o
+do
+		case "$o" in
+				m) message="$OPTARG";;
+		esac
+done
+
+shift $(( OPTIND-1 ))
+
+MAKEFILE="Makefile"
+README="README.rst"
+CONFIGFILE="$1AppC.nc"
+MODULEFILE="$1C.nc"
+HEADERFILE="$1.h"
+MESSAGEFILE="$1Msg.h"
+
+if [ $message -gt 0 ]
+then
+		if [ -e $MESSAGEFILE ]
+		then
+				echo "$MESSAGEFILE exists"
+		else
+				echo "creating $MESSAGEFILE"
+				messagefile $1 $message > $MESSAGEFILE
+		fi
+fi
+
+if [ -e $MAKEFILE ]
+then
+		echo "$MAKEFILE exists"
+else
+		makefile $1 > $MAKEFILE
+fi
+
+if [ -e $CONFIGFILE ]
+then
+		echo "$CONFIGFILE exists"
+else
+		echo "creating $CONFIGFILE"
+		appfile $1 $message > $CONFIGFILE
+fi
+
+if [ -e $MODULEFILE ]
+then
+		echo "$MODULEFILE exists"
+else
+		echo "creating $MODULEFILE"
+		modulefile $1 > $MODULEFILE
+fi
+
+if [ -e $README ]
+then
+		echo "$README exists"
+else
+		echo "creating $README"
+		readmefile $1 > $README
+fi
+
+if [ -e $HEADERFILE ]
+then
+		echo "$HEADERFILE exists"
+else
+		echo "creating $HEADERFILE"
+		headerfile $1 > $HEADERFILE
+fi
+
+
