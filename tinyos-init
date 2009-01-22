@@ -163,54 +163,67 @@ MODULEFILE="$1C.nc"
 HEADERFILE="$1.h"
 MESSAGEFILE="$1Msg.h"
 
+length=0
+for i in ${#MAKEFILE} ${#README} ${#CONFIGFILE} ${#MODULEFILE} ${#HEADERFILE} ${#MESSAGEFILE}
+do
+		if [ $i -gt $length ]
+		then
+				length=$i
+		fi
+done
+
+EXISTS_MSG="%${length}s exists\n"
+CREATED_MSG="%${length}s created\n"
+
 if [ $message -gt 0 ]
 then
 		if [ -e $MESSAGEFILE ]
 		then
-				echo "$MESSAGEFILE exists"
+				printf "$EXISTS_MSG" $MESSAGEFILE
 		else
-				echo "creating $MESSAGEFILE"
+				printf "$CREATED_MSG" $MESSAGEFILE
 				messagefile $1 $message > $MESSAGEFILE
 		fi
 fi
 
 if [ -e $MAKEFILE ]
 then
-		echo "$MAKEFILE exists"
-else
+		printf "$EXISTS_MSG" $MAKEFILE
+else		
 		makefile $1 > $MAKEFILE
+		printf "$CREATED_MSG" $MAKEFILE
 fi
 
 if [ -e $CONFIGFILE ]
 then
-		echo "$CONFIGFILE exists"
+		printf "$EXISTS_MSG" $CONFIGFILE
 else
-		echo "creating $CONFIGFILE"
 		appfile $1 $message > $CONFIGFILE
+		printf "$CREATED_MSG" $CONFIGFILE
 fi
 
 if [ -e $MODULEFILE ]
 then
-		echo "$MODULEFILE exists"
+		printf "$EXISTS_MSG" $MODULEFILE
 else
-		echo "creating $MODULEFILE"
 		modulefile $1 > $MODULEFILE
+		printf "$CREATED_MSG" $MODULEFILE
 fi
 
 if [ -e $README ]
 then
-		echo "$README exists"
+		printf "$EXISTS_MSG" $README
 else
-		echo "creating $README"
 		readmefile $1 > $README
+		printf "$CREATED_MSG" $README
 fi
 
 if [ -e $HEADERFILE ]
 then
-		echo "$HEADERFILE exists"
+		printf "$EXISTS_MSG" $HEADERFILE
 else
-		echo "creating $HEADERFILE"
 		headerfile $1 > $HEADERFILE
+		printf "$CREATED_MSG" $HEADERFILE
 fi
 
 
