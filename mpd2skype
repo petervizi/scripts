@@ -12,16 +12,30 @@ import Skype4Py
 from daemon import Daemon
 from optparse import OptionParser
 import time
+import logging
+import logging.handlers
 
 class Mpd2Skype(Daemon):
     def __init__(self, pidfile):
         Daemon.__init__(self, pidfile, stdout='/tmp/mpd2skype.out', stderr='/tmp/mpd2skype.out')
+        self.logger = logging.getLogger('mpd2skype')
+        self.logger.setLevel(logging.DEBUG)
+        fh = logging.handlers.TimedRotatingFileHandler('/tmp/mpd2skype.log', 'd', 1, 7)
+        fh.setLevel(logging.DEBUG)
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        fh.setFormatter(formatter)
+        self.logger.addHandler(fh)
+
+    def start(self):
+        self.logger.info('Started.')
+        Daemon.start(self)
 
     def stop(self):
         Daemon.stop(self)
         skype = Skype4Py.Skype()
         skype.Attach()
         skype.CurrentUserProfile.MoodText = ''
+        self.logger.info('Stopped.')
 
     def run(self):
         skype = Skype4Py.Skype()
@@ -30,7 +44,7 @@ class Mpd2Skype(Daemon):
         try:
             mpdc.connect('localhost', 6600)
         except Exception:
-            print 'no server running now'
+            self.logger.info('No server running now.')
         text = ''
         status = {}
         while True:
@@ -41,7 +55,7 @@ class Mpd2Skype(Daemon):
                     mpdc.connect('localhost', 6600)
                     status = mpdc.status()
                 except Exception:
-                    print 'no server running now'
+                    self.logger.info('No server running now.')
                     time.sleep(5)
                     continue
             if status['state'] == 'play':
@@ -68,8 +82,8 @@ class Mpd2Skype(Daemon):
                     try:
                         skype.CurrentUserProfile.RichMoodText = tmp
                     except Exception, e:
-                        print e
-                    print tmp
+                        self.logger.exception(e)
+                    self.logger.info(tmp)
             else:
                 text = ''
                 skype.CurrentUserProfile.RichMoodText = text
@@ -83,10 +97,8 @@ if __name__ == "__main__":
 
     daemon = Mpd2Skype('/tmp/mpd2skype.pid')
     if args[0] == 'start':
-        print 'start'
         daemon.start()
     elif args[0] == 'stop':
-        print 'stop'
         daemon.stop()
     else:
         parser.error("Invalid argument!")
