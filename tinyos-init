@@ -181,8 +181,8 @@ then
 		then
 				printf "$EXISTS_MSG" $MESSAGEFILE
 		else
-				printf "$CREATED_MSG" $MESSAGEFILE
 				messagefile $1 $message > $MESSAGEFILE
+				printf "$CREATED_MSG" $MESSAGEFILE
 		fi
 fi
 
@@ -225,5 +225,3 @@ else
 		headerfile $1 > $HEADERFILE
 		printf "$CREATED_MSG" $HEADERFILE
 fi
-
-
