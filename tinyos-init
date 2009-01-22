@@ -2,6 +2,20 @@
 
 ## function definition ##
 
+
+GPL="This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+ 
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+ 
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>."
+
 ##
 # Convert an integer into hexadecimal form
 #
@@ -13,13 +27,64 @@ inttohex() {
 }
 
 ##
+# Format the license for the given language
+#
+# @param $1 the text
+# @param $2 the language: c, makefile
+#
+formatlicense() {
+		case $2 in
+				c) 
+						echo '/**'
+						comm=' *'
+						end=' */'
+						;;				
+				makefile)
+						echo '##'
+						comm='#'
+						end='#'
+						;;
+		esac
+		SIFS=$IFS
+		IFS="
+"
+		for l in $(echo "$1")
+		do
+				echo "$comm $l"
+		done
+		echo "$end"
+		IFS=$SIFS
+}
+
+##
 # Return the Makefile for the application
 #
 # @param $1 the name of the application
+# @param $2 the author
+# @param $3 the license
 # @return the content of the Makefile
 #
 makefile() {
-		echo -e "COMPONENT = $1AppC\n\ninclude \$(MAKERULES)"
+		if [ "$2" != '' ]
+		then
+				comment="
+##
+# @author $2
+#
+"
+		fi
+		if [ "$3" != '' ]
+		then
+				lic=`formatlicense "$3" makefile`
+				lic="$lic
+"
+		fi
+		cat <<EOF
+$lic$comment
+COMPONENT = $1AppC
+
+include \$(MAKERULES)
+EOF
 }
 
 ##
@@ -27,19 +92,35 @@ makefile() {
 #
 # @param $1 the name of the application
 # @param $2 the used message AM id
+# @param $3 author
+# @param $4 license text
 # @return the content of the configuration file
 #
 appfile() {
-		echo -e "#include \"${1}.h\""
+		inc="#include \"${1}.h\""
 		if [ $2 -gt 0 ]
 		then
-				echo -e "#include \"${1}Msg.h\"\n"
-		else
-				echo
+				inc="$inc
+#include \"${1}Msg.h\""
+		fi
+		aut=''
+		if [ "$3" != '' ]
+		then
+				aut="
+ * @author $3"
+		fi
+		if [ "$4" != '' ]
+		then
+				lic=`formatlicense "$4" c`
+				lic="$lic
+
+"
 		fi
 		cat <<EOF
+$lic$inc
+
 /**
- *
+ * $aut
  */
 configuration $1AppC {
 } implementation {
@@ -55,12 +136,26 @@ EOF
 # Create the content of the module file
 #
 # @param $1 the name of the application
+# @param $2 the author
+# @param $3 the license text
 # @return the content of the module
 #
 modulefile() {
+		if [ "$2" != '' ]
+		then
+				aut=" 
+ * @author $2"
+		fi
+		if [ "$3" != '' ]
+		then
+				lic=`formatlicense "$3" c`
+				lic="$lic
+
+"
+		fi
 		cat <<EOF
-/**
- *
+$lic/**
+ *$aut
  */
 module $1C {
     uses interface Boot;
@@ -93,6 +188,7 @@ EOF
 # Create the README.rst content.
 #
 # @param $1 the name of the application
+# @param $2 author
 # @return the content of the README
 #
 readmefile() {
@@ -106,32 +202,82 @@ readmefile() {
 				echo -n "="
 		done
 		echo
+		if [ "$2" != '' ]
+		then
+				echo -e "\n:authors: $2\n"
+		fi
 }
 
 ##
 # Create a header file for the application.
 #
 # @param $1 the name of the application
+# @param $2 author
+# @param $3 license text
 # @return the content of the header file
 #
 headerfile() {
 		NAME=`echo $1 | tr '[:lower:]' '[:upper:]'`
-		echo -e "#ifndef _${NAME}_H_\n#define _${NAME}_H_\n\n#endif"
+		if [ "$2" != '' ]
+		then
+				aut="
+/**
+ *
+ * @author $2
+ */
+"
+		fi
+		if [ "$3" != '' ]
+		then
+				lic=`formatlicense "$3" c`
+				lic="
+$lic
+"
+		fi
+		cat <<EOF
+#ifndef _${NAME}_H_
+#define _${NAME}_H_
+$lic$aut
+#endif
+EOF
 }
 
 ##
 # Create a header file with a message.
 #
-# @param $1 the AM id of the message
+# @param $1 the name of the application
+# @param $2 the AM id of the message
+# @param $3 author
+# @param $4 'true' if include GPL license
 # @return the content of the header file
 #
 messagefile() {
 		UNAME=`echo $1 | tr '[:lower:]' '[:upper:]'`
 		LNAME=`echo $1 | tr '[:upper:]' '[:lower:]'`
 		HEX=`inttohex $2`
+		if [ "$3" == '' ]
+		then
+				COMMENT="/**
+ *
+ */"
+		else
+				COMMENT="/**
+ *
+ * @author $3
+ */"
+		fi
+		if [ "$4" != '' ]
+		then
+				lic=`formatlicense "$4" 'c'`
+				lic="
+$lic
+"
+		fi
 		cat <<EOF
 #ifndef _${UNAME}_MSG_H_
 #define _${UNAME}_MSG_H_
+$lic
+$COMMENT
 
 typedef nx_struct ${LNAME}_msg_t {
 } ${LNAME}_msg_t;
@@ -144,17 +290,61 @@ enum {
 EOF
 }
 
+##
+# Print a short usage information
+#
+# @return the information
+#
+usage() {
+		echo "Usage: tinyos-init [-a AUTHOR] [-g] [-h] [-m AMID] [-o] AppName"
+}
+
+##
+# Print help
+#
+# @return user help
+#
+help() {
+		usage
+		cat <<EOF
+
+Create an empty TinyOS application with the given AppName.
+
+ -a AUTHOR the name of the author to include in the files
+ -g        include GPL license
+ -h        print this help
+ -m AMID   create a message type with the given AM id
+ -o        overwrite existing files
+EOF
+}
+
 ## end of function definition ##
 
 message=0
-while getopts m: o
+overwrite=''
+author=''
+license=''
+while getopts :m:oha:g o
 do
 		case "$o" in
 				m) message="$OPTARG";;
+				o) overwrite='true';;
+				h) help
+						exit 0;;
+				a) author="$OPTARG";;
+				g) license="$GPL";; 
+				*) usage
+						exit 1;;
 		esac
 done
 
 shift $(( OPTIND-1 ))
+
+if [ "$1" == "" ]
+then
+		usage
+		exit 1
+fi
 
 MAKEFILE="Makefile"
 README="README.rst"
@@ -177,51 +367,51 @@ CREATED_MSG="%${length}s created\n"
 
 if [ $message -gt 0 ]
 then
-		if [ -e $MESSAGEFILE ]
+		if [ -e $MESSAGEFILE -a "$overwrite" == "" ]
 		then
 				printf "$EXISTS_MSG" $MESSAGEFILE
 		else
-				messagefile $1 $message > $MESSAGEFILE
+				messagefile $1 $message "$author" "$license" > $MESSAGEFILE
 				printf "$CREATED_MSG" $MESSAGEFILE
 		fi
 fi
 
-if [ -e $MAKEFILE ]
+if [ -e $MAKEFILE -a "$overwrite" == "" ]
 then
 		printf "$EXISTS_MSG" $MAKEFILE
 else		
-		makefile $1 > $MAKEFILE
+		makefile $1 "$author" "$license" > $MAKEFILE
 		printf "$CREATED_MSG" $MAKEFILE
 fi
 
-if [ -e $CONFIGFILE ]
+if [ -e $CONFIGFILE -a "$overwrite" == "" ]
 then
 		printf "$EXISTS_MSG" $CONFIGFILE
 else
-		appfile $1 $message > $CONFIGFILE
+		appfile $1 $message "$author" "$license" > $CONFIGFILE
 		printf "$CREATED_MSG" $CONFIGFILE
 fi
 
-if [ -e $MODULEFILE ]
+if [ -e $MODULEFILE -a "$overwrite" == "" ]
 then
 		printf "$EXISTS_MSG" $MODULEFILE
 else
-		modulefile $1 > $MODULEFILE
+		modulefile $1 "$author" "$license" > $MODULEFILE
 		printf "$CREATED_MSG" $MODULEFILE
 fi
 
-if [ -e $README ]
+if [ -e $README -a "$overwrite" == "" ]
 then
 		printf "$EXISTS_MSG" $README
 else
-		readmefile $1 > $README
+		readmefile $1 "$author" > $README
 		printf "$CREATED_MSG" $README
 fi
 
-if [ -e $HEADERFILE ]
+if [ -e $HEADERFILE -a "$overwrite" == "" ]
 then
 		printf "$EXISTS_MSG" $HEADERFILE
 else
-		headerfile $1 > $HEADERFILE
+		headerfile $1 "$author" "$license" > $HEADERFILE
 		printf "$CREATED_MSG" $HEADERFILE
 fi
