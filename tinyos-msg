@@ -1,0 +1,172 @@
+#!/bin/bash
+
+GPL="This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>."
+
+##
+# Format the license for the given language
+#
+# @param $1 the text
+# @param $2 the language: c, makefile
+#
+formatlicense() {
+    case $2 in
+        c)
+            echo '/**'
+            comm=' *'
+            end=' */'
+            ;;
+        makefile)
+            echo '##'
+            comm='#'
+            end='#'
+            ;;
+    esac
+    SIFS=$IFS
+    IFS="
+"
+    for l in $(echo "$1")
+    do
+        echo "$comm $l"
+    done
+    echo "$end"
+    IFS=$SIFS
+}
+
+##
+# Create a header file with a message.
+#
+# @param $1 the name of the application
+# @param $2 the AM id of the message
+# @param $3 author
+# @param $4 'true' if include GPL license
+# @return the content of the header file
+#
+messagefile() {
+    UNAME=`echo $1 | tr '[:lower:]' '[:upper:]'`
+    LNAME=`echo $1 | tr '[:upper:]' '[:lower:]'`
+    HEX=`inttohex $2`
+    if [ "$3" == '' ]
+    then
+        COMMENT="
+/**
+ *
+ */"
+    else
+        COMMENT="
+/**
+ *
+ * @author $3
+ */"
+    fi
+    if [ "$4" != '' ]
+    then
+        lic=`formatlicense "$4" 'c'`
+        lic="$lic
+"
+    fi
+    cat <<EOF
+$lic
+#ifndef _${UNAME}_MSG_H_
+#define _${UNAME}_MSG_H_
+$COMMENT
+typedef nx_struct ${LNAME}_msg_t {
+} ${LNAME}_msg_t;
+
+enum {
+    AM_${UNAME}_MSG_T = 0x$HEX, // $2
+};
+
+#endif /* _${UNAME}_MSG_H_ */
+EOF
+}
+
+##
+# Print help
+#
+# @return user help
+#
+help() {
+    usage
+    cat <<EOF
+
+Create an empty TinyOS application with the given AppName.
+
+ -a AUTHOR the name of the author to include in the files
+ -g        include GPL license
+ -h        print this help
+ -m AMID   create a message type with the given AM id (decimal)
+ -o        overwrite existing files
+EOF
+}
+
+##
+# Print a short usage information
+#
+# @return the information
+#
+usage() {
+    echo "Usage: tinyos-msg [-a AUTHOR] [-g] [-h] -m AMID MsgName"
+}
+
+##
+# Convert an integer into hexadecimal form
+#
+# @param $1 an integer
+# @return $1 in hexadecimal
+#
+inttohex() {
+    echo $(echo "obase=16; $1" | bc)
+}
+
+author=''
+amid=''
+license=''
+overwrite=''
+
+while getopts a:m:goh o
+do
+    case "$o" in
+        a) author="$OPTARG";;
+        m) amid="$OPTARG";;
+        g) license="$GPL";;
+        o) overwrite='true';;
+        h) help
+            exit 0;;
+        [?]) usage
+            exit 1;;
+    esac
+done
+
+shift $(( OPTIND-1 ))
+
+if [ "$1" == "" -o "X$amid" == "X" ]
+then
+        usage
+        exit 1
+fi
+
+MESSAGEFILE="$1Msg.h"
+EXISTS_MSG="%${length}s exists\n"
+
+if [ "$amid" -lt 128 -o "$amid" -gt 255 ]
+then
+    echo 'Warning: Unreserved pool (0x80 - 0xFF)'
+fi
+
+if [ -e $MESSAGEFILE -a "X$overwrite" == 'X' ]
+then
+    printf "$EXISTS_MSG" $MESSAGEFILE
+else
+    messagefile $1 $amid "$author" "$license" > $MESSAGEFILE
+fi
