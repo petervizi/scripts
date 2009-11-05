@@ -3,13 +3,18 @@ import sys
 import re
 import urllib
 import os
+from optparse import OptionParser
 
 if __name__ == '__main__':
-	if len(sys.argv) < 2:
+	usage = "usage: %prog [options] url"
+	parser = OptionParser(usage=usage)
+	parser.add_option("-w", "--watch", dest="watch",
+			  help="watch directory", default="watch")
+	(options, args) = parser.parse_args()
+	if len(args) < 1:
 		print 'no argument!'
 		sys.exit(1)
-
-	arg = sys.argv[1]
+	arg = args[0]
 	numexp = re.compile('http://www.mininova.org/tor/(\d*)')
 	num = numexp.match(arg).group(1)	
 	url = 'http://www.mininova.org/get/' + num
@@ -19,6 +24,7 @@ if __name__ == '__main__':
 		sys.exit(1)
 	nameexp = re.compile('inline; filename="(.*)"')
 	name = nameexp.match(headers.dict['content-disposition']).group(1)
+	name = os.path.join(os.path.expanduser('~'), options.watch, name)
 	os.rename(filename, name)
 	print 'Done', name
 
