@@ -1,0 +1,1 @@
+hddtemp /dev/sda | awk '{print $3}' | tr -d °+

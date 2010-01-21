@@ -1,0 +1,113 @@
+#!/usr/bin/python2.6
+
+##
+# Config syntax:
+#
+# [gmail]
+# user = yourname@gmail.com
+# passwd = ****
+# mailbox = INBOX
+# host = imap.gmail.com
+# port = 993
+#
+
+import time
+from optparse import OptionParser
+import ConfigParser
+import os
+import sys
+import imaplib
+import datetime
+
+from daemon import Daemon
+
+class MyChecker():
+    def __init__(self, user, passwd, mboxes, server, port=993, interval = 0):
+        self._conn = imaplib.IMAP4_SSL(server, port)
+        self._user = user
+        self._passwd = passwd
+        self._server = server
+        self._port = port
+        self._lastcheck = datetime.datetime.min
+        self._conn.login(user, passwd)
+        self._interval = datetime.timedelta(seconds=interval)
+        self._mboxes = mboxes
+
+    def check(self):
+        if datetime.datetime.now() - self._lastcheck >= self._interval:
+            try:
+                self._conn.select("INBOX", True)
+            except Exception, e:
+                self._conn.login(self._user, self._passwd)
+
+            self._unread = 0
+            try:
+                for mbox in self._mboxes:
+                    status, counts = self._conn.status(mbox, "(MESSAGES UNSEEN)")
+                    self._unread += int(counts[0].split()[4][:-1])
+            except Exception, e:
+                print e
+
+            self._lastcheck = datetime.datetime.now()
+            return self._unread
+        else:
+            return self._unread
+
+    def host(self):
+        return self._server
+
+    def close(self):
+        self._conn.close()
+
+class MyDaemon(Daemon):
+    def __init__(self, configfile):
+        Daemon.__init__(self, '/tmp/check_mail.pid')
+        self._config = ConfigParser.ConfigParser()
+        self._config.read(configfile)
+        self._checkers = {}
+
+    def run(self):
+        for server in self._config.sections():
+            mboxes = self._config.get(server, "mailbox").split(';')
+            checker = MyChecker(self._config.get(server, "user"),
+                                self._config.get(server, "passwd"),
+                                mboxes,
+                                self._config.get(server, 'host'),
+                                self._config.getint(server, 'port'))
+            self._checkers[server] = checker
+        while True:
+            print self._checkers
+            for server, checker in self._checkers.iteritems():
+                f = open("/tmp/check_%s" % server, 'w')
+                f.write("%d" % checker.check())
+                f.close()
+            time.sleep(30)
+
+    def stop(self):
+        Daemon.stop(self)
+        for server, checker in self._checkers.iteritems():
+            checker.close()
+
+if __name__ == "__main__":
+    parser = OptionParser(usage="%prog [options] start|stop|restart", version="%prog 0.1")
+    parser.add_option("-c", "--config-file", dest="config",
+                      help="Configuration file [default: %default]",
+                      default=os.path.expanduser(".check_mail.rc"))
+
+    (options, args) = parser.parse_args()
+
+    daemon = MyDaemon(options.config)
+
+    if len(args) == 1:        
+        if 'start' == args[0]:
+            daemon.start()
+        elif 'stop' == args[0]:
+            daemon.stop()
+        elif 'restart' == args[0]:
+            daemon.restart()
+        else:
+            parser.print_usage()
+            sys.exit(1)
+    else:
+        parser.print_usage()
+        sys.exit(2)

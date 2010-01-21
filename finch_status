@@ -1,0 +1,11 @@
+#!/usr/bin/python
+import dbus
+
+bus = dbus.SessionBus()
+obj = bus.get_object("im.pidgin.purple.PurpleService", "/im/pidgin/purple/PurpleObject")
+purple = dbus.Interface(obj, "im.pidgin.purple.PurpleInterface")
+
+count = 0
+for conv in purple.PurpleGetConversations():
+    count += purple.PurpleConversationGetData(conv, "unseen-count")
+print count
